@@ -10,7 +10,7 @@ export function createDiscordService({ db, token, clientId }) {
     syncChannel(db, { id: channel.id, guildId: channel.guild.id, name: channel.name });
   }
   let synchronized = false;
-  client.on('ready', async () => {
+  client.on('clientReady', async () => {
     synchronized = false;
     console.log(`Bot connected as ${client.user.tag}`);
     let failed = false;
