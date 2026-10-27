@@ -30,6 +30,14 @@ export function createApp({ db, discord, clientId = '', clientSecret = '', baseU
   app.get('/health', (_req, res) => res.json({ ok: true, botReady: discord.client.isReady() }));
   app.get('/ready', (_req, res) => discord.client.isReady() && discord.isSynchronized?.()
     ? res.json({ ready: true }) : res.status(503).json({ ready: false }));
+  // Application IDs are public. Never expose the bot token or OAuth client secret.
+  app.get('/api/public-config', (_req, res) => {
+    if (!/^\d{16,22}$/.test(clientId) || !discord.client.isReady() || !discord.isSynchronized?.())
+      return res.json({ installUrl: null });
+    const query = new URLSearchParams({ client_id: clientId, scope: 'bot applications.commands',
+      permissions: '66560', integration_type: '0' });
+    res.json({ installUrl: `https://discord.com/oauth2/authorize?${query}` });
+  });
   app.get('/api/me', async (req, res) => {
     if (!req.session) return res.json({ authenticated: false });
     if (!discord.client.isReady() || (discord.isSynchronized && !discord.isSynchronized()))

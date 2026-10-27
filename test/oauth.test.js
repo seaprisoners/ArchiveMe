@@ -5,6 +5,35 @@ import { openDatabase } from '../src/db.js';
 import { createApp } from '../src/app.js';
 
 const USER = '623456789012345678';
+test('public installation link uses minimum permissions and never includes secrets', async () => {
+  const db = openDatabase();
+  const app = createApp({ db, discord: { client: { isReady: () => true }, isSynchronized: () => true },
+    clientId: '123456789012345678', clientSecret: 'private-secret', webDir: '/nonexistent' });
+  const server = app.listen(0, '127.0.0.1'); await once(server, 'listening');
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/public-config`);
+    assert.equal(response.status, 200);
+    const raw = await response.text();
+    assert.doesNotMatch(raw, /private-secret|token|client_secret/i);
+    const url = new URL(JSON.parse(raw).installUrl);
+    assert.equal(url.origin, 'https://discord.com');
+    assert.equal(url.pathname, '/oauth2/authorize');
+    assert.equal(url.searchParams.get('scope'), 'bot applications.commands');
+    assert.equal(url.searchParams.get('permissions'), '66560');
+    assert.equal(url.searchParams.get('integration_type'), '0');
+    assert.equal(url.searchParams.get('client_id'), '123456789012345678');
+  } finally { server.close(); db.close(); }
+});
+test('public installation link is absent when the bot is offline or not configured', async () => {
+  const db = openDatabase();
+  const app = createApp({ db, discord: { client: { isReady: () => false }, isSynchronized: () => false },
+    clientId: '123456789012345678', webDir: '/nonexistent' });
+  const server = app.listen(0, '127.0.0.1'); await once(server, 'listening');
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/public-config`);
+    assert.deepEqual(await response.json(), { installUrl: null });
+  } finally { server.close(); db.close(); }
+});
 test('OAuth state is single-use and callback creates hashed session without exposing access token', async () => {
   const db = openDatabase();
   const calls = [];
