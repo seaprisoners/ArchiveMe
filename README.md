@@ -1,6 +1,6 @@
 # ArchiveMe
 
-**Start learning:** the [complete beginner handbook](docs/BEGINNER_GUIDE.md) explains each component, Discord setup, security decisions, and operation step by step. **Portfolio deployment:** this repository is public source code; the running application is intentionally local-only until hosting, consent, and privacy review are complete. Do not upload its `.env` or `data/` directory.
+**Start learning:** the [complete beginner handbook](docs/BEGINNER_GUIDE.md) explains each component, Discord setup, security decisions, and operation step by step. To change the appearance yourself, follow the [easy website redesign guide](docs/REDESIGN_WEBSITE.md). **Portfolio deployment:** this repository is public source code; the running application is intentionally local-only until hosting, consent, and privacy review are complete. Do not upload its `.env` or `data/` directory.
 
 **Private, opt-in Discord text-channel archiving and analytics** — an educational, read-only application. An official bot records messages from enabled server text channels. A separate website uses Discord login and checks **current Manage Server permission and channel-specific viewing permission on every request** before returning archive content or statistics. The public demo uses synthetic data only.
 
@@ -8,6 +8,7 @@
 
 ## What it does
 
+- The front page introduces the official bot and, when it is configured and online, offers an **Add bot to your server** link. It requests only View Channel and Read Message History—not Administrator—and never enables archiving automatically. Because this site is currently localhost-only, people on other computers cannot use this website until you deliberately deploy it with HTTPS and review privacy/hosting obligations.
 - Admins enable/disable individual server text channels with `/archive enable channel:#example`, `/archive disable channel:#example`, or the admin dashboard. Every channel defaults to **off**.
 - Bot listens for new messages and edits through the official Gateway; it deletes recorded messages on deletion events when observed. Deleting/reenabling a channel is not a recovery mechanism. Bot removal deletes that server's local records.
 - Website displays a read-only timeline and activity-per-day chart. Authentication is Discord OAuth2; **authorization is a fresh Discord membership/Manage Server and channel View/History check**, not just login or a role cached in the database. Admins may purge a channel's recorded messages through the API.
