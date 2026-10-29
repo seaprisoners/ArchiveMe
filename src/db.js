@@ -14,13 +14,66 @@ export function safeMediaUrl(value) {
   } catch { return null; }
 }
 const cleanString = (value, length = 255) => typeof value === 'string' ? value.slice(0, length) : null;
+const snowflake = value => /^\d{16,22}$/.test(String(value));
+const segmenter = new Intl.Segmenter('und', { granularity: 'grapheme' });
+const customEmoji = /<(?<animated>a?):(?<name>[A-Za-z0-9_]{2,32}):(?<id>\d{16,22})>/g;
+const emojiGlyph = /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/u;
+const flagPair = /^\p{Regional_Indicator}{2}$/u;
+const keycap = /^[#*0-9]\uFE0F?\u20E3$/u;
+export function customEmojiUrl(id, animated = false) {
+  return snowflake(id) ? `https://cdn.discordapp.com/emojis/${id}.${animated ? 'gif' : 'png'}` : null;
+}
+export function stickerPreview(id, format) {
+  // Discord StickerFormatType: PNG=1, APNG=2, Lottie=3, GIF=4.
+  if (!snowflake(id)) return { url: null, contentType: null };
+  if (format === 1 || format === 2) return { url: `https://cdn.discordapp.com/stickers/${id}.png`, contentType: 'image/png' };
+  if (format === 4) return { url: `https://cdn.discordapp.com/stickers/${id}.gif`, contentType: 'image/gif' };
+  // Lottie is JSON animation and must never be passed to an image element.
+  return { url: null, contentType: null };
+}
+function stickerFromMime(id, contentType, legacyUrl = null) {
+  if (contentType === 'image/gif') return stickerPreview(id, 4);
+  if (contentType === 'image/png') return stickerPreview(id, 1);
+  // Old archives only kept Discord's URL. Recognize exact canonical paths, never
+  // trust a third-party host, query, or a .json Lottie animation as an image.
+  if (legacyUrl === `https://cdn.discordapp.com/stickers/${id}.gif`) return stickerPreview(id, 4);
+  if (legacyUrl === `https://cdn.discordapp.com/stickers/${id}.png`) return stickerPreview(id, 1);
+  return stickerPreview(id, null);
+}
+export function parseEmojis(content) {
+  if (typeof content !== 'string') return [];
+  const entries = new Map();
+  const record = (id, name, contentType = null) => {
+    const existing = entries.get(id);
+    if (existing) { existing.count++; return; }
+    entries.set(id, { id, name, contentType, count: 1 });
+  };
+  const unicode = text => {
+    for (const { segment } of segmenter.segment(text)) {
+      if (keycap.test(segment) || flagPair.test(segment) ||
+        (!/^\p{Regional_Indicator}+$/u.test(segment) && emojiGlyph.test(segment))) {
+        record(segment, segment);
+      }
+    }
+  };
+  let offset = 0;
+  for (const match of content.matchAll(customEmoji)) {
+    unicode(content.slice(offset, match.index));
+    record(match.groups.id, match.groups.name, match.groups.animated ? 'image/gif' : 'image/png');
+    offset = match.index + match[0].length;
+  }
+  unicode(content.slice(offset));
+  return [...entries.values()];
+}
 function cleanMedia(media) {
   if (!Array.isArray(media)) return [];
   return media.slice(0, 50).flatMap(item => {
-    if (!item || !['attachment', 'sticker'].includes(item.kind) || !/^\d{16,22}$/.test(String(item.id))) return [];
+    if (!item || !['attachment', 'sticker'].includes(item.kind) || !snowflake(item.id)) return [];
+    const sticker = stickerPreview(item.id, item.format);
     return [{ kind: item.kind, id: String(item.id), name: cleanString(item.name),
-      contentType: cleanString(item.contentType), size: Number.isSafeInteger(item.size) && item.size >= 0 ? item.size : null,
-      url: safeMediaUrl(item.url) }];
+      contentType: item.kind === 'sticker' ? sticker.contentType : cleanString(item.contentType),
+      size: item.kind === 'sticker' ? null : Number.isSafeInteger(item.size) && item.size >= 0 ? item.size : null,
+      url: item.kind === 'sticker' ? sticker.url : safeMediaUrl(item.url) }];
   });
 }
 // Exclusive precedence: video > image > link > text > other (including untyped files/stickers).
@@ -37,6 +90,22 @@ function replaceMedia(db, id, media) {
   const insert = db.prepare(`INSERT INTO message_media(message_id,kind,id,name,content_type,size,url)
     VALUES(?,?,?,?,?,?,?) ON CONFLICT(message_id,kind,id) DO NOTHING`);
   for (const item of media) insert.run(id, item.kind, item.id, item.name, item.contentType, item.size, item.url);
+}
+function replaceEmojis(db, id, content) {
+  db.prepare('DELETE FROM message_emojis WHERE message_id=?').run(id);
+  const insert = db.prepare(`INSERT INTO message_emojis(message_id,id,name,content_type,count)
+    VALUES(?,?,?,?,?)`);
+  for (const emoji of parseEmojis(content)) insert.run(id, emoji.id, emoji.name, emoji.contentType, emoji.count);
+}
+function publicMedia(item) {
+  if (item.kind !== 'sticker') return item;
+  const preview = stickerFromMime(item.id, item.contentType, item.url);
+  return { ...item, ...preview };
+}
+function publicEmoji(item) {
+  return { ...item, kind: 'emoji', size: null,
+    url: item.contentType === 'image/png' || item.contentType === 'image/gif'
+      ? customEmojiUrl(item.id, item.contentType === 'image/gif') : null };
 }
 function transaction(db, work) {
   db.exec('BEGIN IMMEDIATE');
@@ -73,6 +142,12 @@ export function openDatabase(filename = ':memory:') {
       PRIMARY KEY(message_id,kind,id)
     );
     CREATE INDEX IF NOT EXISTS message_media_message ON message_media(message_id);
+    CREATE TABLE IF NOT EXISTS message_emojis (
+      message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+      id TEXT NOT NULL, name TEXT NOT NULL, content_type TEXT, count INTEGER NOT NULL CHECK(count>0),
+      PRIMARY KEY(message_id,id)
+    );
+    CREATE INDEX IF NOT EXISTS message_emojis_message ON message_emojis(message_id);
     CREATE TABLE IF NOT EXISTS redacted_messages (
       id TEXT PRIMARY KEY, channel_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE
     );
@@ -131,7 +206,10 @@ export function archiveMessage(db, message) {
       .run(message.id, message.guildId, message.channelId, message.authorId, message.authorName,
         message.avatarUrl ?? null, message.content, message.createdAt, message.editedAt ?? null,
         classifyMessage(message, media));
-    if (inserted.changes) replaceMedia(db, message.id, media);
+    if (inserted.changes) {
+      replaceMedia(db, message.id, media);
+      replaceEmojis(db, message.id, message.content);
+    }
     return !!inserted.changes;
   });
 }
@@ -147,7 +225,10 @@ export function updateArchivedMessage(db, message) {
       AND deleted_at IS NULL AND EXISTS (SELECT 1 FROM channels WHERE id=? AND enabled=1)`)
       .run(message.content, message.editedAt, category,
         message.id, message.guildId, message.channelId, message.channelId);
-    if (result.changes && message.media !== undefined) replaceMedia(db, message.id, media);
+    if (result.changes) {
+      if (message.media !== undefined) replaceMedia(db, message.id, media);
+      replaceEmojis(db, message.id, message.content);
+    }
     return !!result.changes;
   });
 }
@@ -201,21 +282,39 @@ export function dailyStats(db, channelId, days = 30) {
     const date = new Date(Date.parse(`${first}T00:00:00.000Z`) + index * 86400000).toISOString().slice(0, 10);
     return { date, count: counts.get(date) ?? 0 };
   });
+  const topEmojis = db.prepare(`SELECT me.id, me.name, me.content_type AS contentType, sum(me.count) AS count
+    FROM message_emojis me JOIN messages m ON m.id=me.message_id
+    WHERE m.channel_id=? AND m.deleted_at IS NULL AND m.created_at>=? AND m.created_at<?
+    GROUP BY me.id ORDER BY count DESC, me.id LIMIT 20`).all(channelId, first, tomorrow)
+    .map(publicEmoji).map(({ kind, size, ...item }) => item);
+  const topStickers = db.prepare(`SELECT mm.id, mm.name, mm.content_type AS contentType, mm.url,
+    count(*) AS count FROM message_media mm JOIN messages m ON m.id=mm.message_id
+    WHERE mm.kind='sticker' AND m.channel_id=? AND m.deleted_at IS NULL AND m.created_at>=? AND m.created_at<?
+    GROUP BY mm.id ORDER BY count DESC, mm.id LIMIT 20`).all(channelId, first, tomorrow)
+    .map(row => ({ ...stickerFromMime(row.id, row.contentType, row.url),
+      id: row.id, name: row.name, count: row.count }))
+    .map(({ kind, ...item }) => item);
   return { daily, total: daily.reduce((sum, row) => sum + row.count, 0), hourly, categories,
-    timezone: 'UTC', categorySemantics: 'Exclusive: videos > images > links > text > other; legacy messages without media metadata are unknown. Sticker-only and untyped attachment-only messages are other.' };
+    topEmojis, topStickers, timezone: 'UTC',
+    categorySemantics: 'Exclusive: videos > images > links > text > other; legacy messages without media metadata are unknown. Sticker-only and untyped attachment-only messages are other.' };
 }
 export function listMedia(db, channelId, before, limit = 50) {
   const messages = db.prepare(`SELECT m.id,m.author_name AS authorName,m.created_at AS createdAt FROM messages m
     WHERE m.channel_id=? AND m.deleted_at IS NULL
     AND (? IS NULL OR length(m.id) < length(?) OR (length(m.id)=length(?) AND m.id < ?))
-    AND EXISTS (SELECT 1 FROM message_media mm WHERE mm.message_id=m.id)
+    AND (EXISTS (SELECT 1 FROM message_media mm WHERE mm.message_id=m.id)
+      OR EXISTS (SELECT 1 FROM message_emojis me WHERE me.message_id=m.id))
     ORDER BY length(m.id) DESC,m.id DESC LIMIT ?`).all(channelId, before, before, before, before, limit + 1);
   const hasMore = messages.length > limit;
   const page = messages.slice(0, limit);
   const select = db.prepare(`SELECT kind,id,name,content_type AS contentType,size,url
     FROM message_media WHERE message_id=? ORDER BY kind,id`);
-  return { media: page.flatMap(message => select.all(message.id).map(item => ({
-    messageId: message.id, ...item, createdAt: message.createdAt, authorName: message.authorName
+  const selectEmojis = db.prepare(`SELECT id,name,content_type AS contentType,count
+    FROM message_emojis WHERE message_id=? ORDER BY id`);
+  return { media: page.flatMap(message => [
+    ...select.all(message.id).map(publicMedia), ...selectEmojis.all(message.id).map(publicEmoji)
+  ].map(item => ({ messageId: message.id, ...item,
+    createdAt: message.createdAt, authorName: message.authorName
   }))), nextBefore: hasMore ? page.at(-1).id : null };
 }
 export function pruneMessages(db, days) {

@@ -55,8 +55,8 @@ export function createDiscordService({ db, token, clientId }) {
       size: item.size, url: item.url
     }));
     const stickers = [...(message.stickers?.values() ?? [])].map(item => ({
-      kind: 'sticker', id: item.id, name: item.name, contentType: null,
-      size: null, url: item.url
+      kind: 'sticker', id: item.id, name: item.name, format: item.format,
+      size: null
     }));
     return [...attachments, ...stickers];
   }
