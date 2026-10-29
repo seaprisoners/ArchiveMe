@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { authRoutes } from './auth.js';
-import { dailyStats, listMessages, purgeChannel, setChannelEnabled } from './db.js';
+import { dailyStats, listMedia, listMessages, purgeChannel, setChannelEnabled } from './db.js';
 
 const snowflake = value => typeof value === 'string' && /^\d{16,22}$/.test(value);
 export function createApp({ db, discord, clientId = '', clientSecret = '', baseUrl = 'http://localhost:3000', oauthFetch, webDir = resolve('web/dist'), trustProxy = false }) {
@@ -97,6 +97,13 @@ export function createApp({ db, discord, clientId = '', clientSecret = '', baseU
     const days = Number(req.query.days ?? 30);
     if (!Number.isInteger(days) || days < 1 || days > 90) return res.status(400).json({ error: 'Days must be between 1 and 90' });
     res.json(dailyStats(db, req.params.channelId, days));
+  });
+  app.get('/api/guilds/:guildId/channels/:channelId/media', requireAdmin, requireChannel, (req, res) => {
+    if (!req.archiveChannel.enabled) return res.status(403).json({ error: 'Archiving is disabled' });
+    const limit = Number(req.query.limit ?? 50);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100 || (req.query.before && !snowflake(req.query.before)))
+      return res.status(400).json({ error: 'Invalid pagination' });
+    res.json(listMedia(db, req.params.channelId, req.query.before ?? null, limit));
   });
   app.patch('/api/guilds/:guildId/channels/:channelId', requireAdmin, requireChannel, async (req, res) => {
     if (typeof req.body?.enabled !== 'boolean') return res.status(400).json({ error: 'enabled must be boolean' });

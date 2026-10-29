@@ -49,11 +49,22 @@ export function createDiscordService({ db, token, clientId }) {
     // Data is removed when the bot leaves. Backups have a separate retention policy.
     db.prepare('DELETE FROM guilds WHERE id=?').run(guild.id);
   });
+  function extractMedia(message) {
+    const attachments = [...(message.attachments?.values() ?? [])].map(item => ({
+      kind: 'attachment', id: item.id, name: item.name, contentType: item.contentType,
+      size: item.size, url: item.url
+    }));
+    const stickers = [...(message.stickers?.values() ?? [])].map(item => ({
+      kind: 'sticker', id: item.id, name: item.name, contentType: null,
+      size: null, url: item.url
+    }));
+    return [...attachments, ...stickers];
+  }
   function save(message) {
     if (!message.guildId || !message.author || message.author.bot || !allowedType(message.channel)) return;
     archiveMessage(db, { id: message.id, guildId: message.guildId, channelId: message.channelId,
       authorId: message.author.id, authorName: message.member?.displayName || message.author.globalName || message.author.username,
-      avatarUrl: message.author.displayAvatarURL(), content: message.content ?? '',
+      avatarUrl: message.author.displayAvatarURL(), content: message.content ?? '', media: extractMedia(message),
       createdAt: message.createdAt.toISOString(), editedAt: message.editedAt?.toISOString() ?? null });
   }
   client.on('messageCreate', save);
@@ -62,7 +73,8 @@ export function createDiscordService({ db, token, clientId }) {
       if (!updated.guildId || !updated.channelId || !db.prepare('SELECT 1 FROM messages WHERE id=? AND channel_id=?').get(updated.id, updated.channelId)) return;
       const message = updated.partial ? await updated.fetch() : updated;
       updateArchivedMessage(db, { id: message.id, guildId: message.guildId, channelId: message.channelId,
-        content: message.content ?? '', editedAt: message.editedAt?.toISOString() ?? new Date().toISOString() });
+        content: message.content ?? '', media: extractMedia(message),
+        editedAt: message.editedAt?.toISOString() ?? new Date().toISOString() });
     } catch (error) { console.error('Could not process message edit:', error.message); }
   });
   client.on('messageDelete', message => redactMessage(db, message.id, message.channelId));
