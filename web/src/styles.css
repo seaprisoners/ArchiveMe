@@ -12,6 +12,8 @@
   --accent: #184c82;
   --accent-text: #ffffff;
   --focus: #084f9c;
+  --chart-track: #e4e4e4;
+  --preview-surface: #f4f4f4;
   --space: 1rem;
   font-family: system-ui, sans-serif;
   line-height: 1.5;
@@ -112,17 +114,42 @@ select, input { min-height: 2.5rem; max-width: 100%; border: 1px solid var(--bor
 .quick-list { display: grid; gap: .5rem; }
 .quick-item { justify-content: flex-start; text-align: left; }
 .select-wrap, .archive-channel, .search-field { display: inline-flex; align-items: center; gap: .5rem; }
-/* Statistics & Media uses plain bars and metadata blocks, never binary previews. */
+/* Statistics & Media: counts remain visible when bars or thumbnails cannot load. */
 .statistics-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space); margin-bottom: var(--space); }
-.hourly-chart { display: grid; gap: .5rem; padding: .5rem 0; }
-.hour-bar { display: grid; grid-template-columns: 4rem minmax(0, 1fr) 3rem; align-items: center; gap: .5rem; }
-.hour-bar progress { width: 100%; height: 1rem; accent-color: var(--accent); }
+.statistics-page > .card { min-width: 0; margin-bottom: var(--space); }
+.hourly-chart, .category-chart { display: grid; gap: .625rem; padding-block: .5rem; }
+.hour-bar, .category-bar {
+  display: grid; grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr) auto;
+  align-items: center; gap: .75rem; min-width: 0;
+}
+.hour-bar > :first-child, .category-bar > :first-child { overflow-wrap: anywhere; }
+.hour-bar > strong, .category-bar > strong { min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
+.hour-bar progress, .category-bar progress {
+  display: block; width: 100%; height: 1rem; margin: 0;
+  border: 1px solid var(--border); border-radius: .2rem;
+  background: var(--chart-track); color: var(--accent); accent-color: var(--accent);
+  overflow: hidden;
+}
+.hour-bar progress::-webkit-progress-bar, .category-bar progress::-webkit-progress-bar { background: var(--chart-track); }
+.hour-bar progress::-webkit-progress-value, .category-bar progress::-webkit-progress-value { background: var(--accent); }
+.hour-bar progress::-moz-progress-bar, .category-bar progress::-moz-progress-bar { background: var(--accent); }
 .category-list { display: grid; gap: .5rem; }
 .category-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; border-bottom: 1px solid var(--border); }
 .media-item { min-width: 0; border: 1px solid var(--border); padding: var(--space); overflow-wrap: anywhere; }
 .media-meta { display: flex; flex-direction: column; gap: .25rem; color: var(--muted); overflow-wrap: anywhere; }
 .media-meta strong { color: var(--text); }
 .media-item a { display: inline-flex; align-items: center; gap: .25rem; margin-top: .5rem; }
+/* The browser may display a safe Discord-hosted image; this is not local file storage. */
+.media-preview {
+  display: grid; place-items: center; width: 5.5rem; height: 5.5rem; max-width: 100%;
+  border: 1px solid var(--border); background: var(--preview-surface);
+  object-fit: contain; overflow: hidden; font-size: 1.5rem; text-align: center;
+}
+.media-preview img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.popular-list { display: grid; gap: .5rem; }
+.popular-item { display: flex; align-items: center; gap: .75rem; min-width: 0; padding-block: .5rem; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.popular-item > :not(.media-preview) { min-width: 0; }
+.popular-item .media-preview { flex: 0 0 3.25rem; width: 3.25rem; height: 3.25rem; }
 .chart-wrap { display: flex; min-height: 12rem; gap: .5rem; margin-top: 1rem; }
 .chart-scale { display: flex; flex-direction: column; justify-content: space-between; }
 .chart-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
@@ -176,4 +203,5 @@ select, input { min-height: 2.5rem; max-width: 100%; border: 1px solid var(--bor
   .login-actions > *, .modal-actions > * { width: 100%; }
   .archive-toolbar, .archive-tools { align-items: flex-start; }
   .search-field { width: 100%; }
+  .hour-bar, .category-bar { grid-template-columns: minmax(5.5rem, 7rem) minmax(0, 1fr) auto; gap: .4rem; }
 }
