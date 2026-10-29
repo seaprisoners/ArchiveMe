@@ -80,7 +80,7 @@ test('sticker previews use only canonical supported formats and legacy rows neve
   const db = fixture();
   try {
     const formats = [[1, 'image/png', 'png'], [2, 'image/png', 'png'],
-      [3, null, null], [4, 'image/gif', 'gif'], [99, null, null]];
+      [3, 'application/json', 'json'], [4, 'image/gif', 'gif'], [99, null, null]];
     for (const [format, mime, extension] of formats) {
       const id = String(BigInt(S) + BigInt(format));
       const preview = stickerPreview(id, format);
@@ -95,9 +95,12 @@ test('sticker previews use only canonical supported formats and legacy rows neve
     db.prepare('UPDATE message_media SET url=?,content_type=? WHERE id=?')
       .run(`https://cdn.discordapp.com/stickers/${String(BigInt(S) + 4n)}.json`, null, String(BigInt(S) + 4n));
     const row = listMedia(db, C, null).media.find(item => item.id === String(BigInt(S) + 4n));
-    assert.equal(row.url, null);
-    assert.equal(row.contentType, null);
-    assert.equal(dailyStats(db, C, 1).topStickers.find(item => item.id === row.id).url, null);
+    assert.equal(row.url, `https://cdn.discordapp.com/stickers/${row.id}.json`);
+    assert.equal(row.contentType, 'application/json');
+    assert.equal(dailyStats(db, C, 1).topStickers.find(item => item.id === row.id).url, row.url);
+    db.prepare('UPDATE message_media SET url=?,content_type=? WHERE id=?')
+      .run(`https://evil.example/stickers/${row.id}.json`, null, row.id);
+    assert.equal(listMedia(db, C, null).media.find(item => item.id === row.id).url, null);
     db.prepare('UPDATE message_media SET url=?,content_type=? WHERE id=?')
       .run(`https://cdn.discordapp.com/stickers/${String(BigInt(S) + 4n)}.gif`, null, String(BigInt(S) + 4n));
     assert.equal(listMedia(db, C, null).media.find(item => item.id === row.id).url,
@@ -173,7 +176,8 @@ test('Discord create/update extraction includes sticker format and re-parses emo
     service.client.emit('messageUpdate', null, { ...base, content: '❤️', editedAt: new Date(),
       stickers: new Map([['sticker', sticker(S, 3)]]) });
     await new Promise(resolve => setImmediate(resolve));
-    assert.equal(listMedia(db, C, null).media.find(item => item.kind === 'sticker').url, null);
+    assert.equal(listMedia(db, C, null).media.find(item => item.kind === 'sticker').url,
+      `https://cdn.discordapp.com/stickers/${S}.json`);
     assert.deepEqual(dailyStats(db, C, 1).topEmojis.map(item => item.id), ['❤️']);
   } finally { service.client.destroy(); db.close(); }
 });

@@ -14,7 +14,7 @@ export function createApp({ db, discord, clientId = '', clientSecret = '', baseU
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: { directives: {
     defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'"], imgSrc: ["'self'", 'https://cdn.discordapp.com', 'data:'],
-    connectSrc: ["'self'"], objectSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'self'"], formAction: ["'self'"]
+    connectSrc: ["'self'", 'https://cdn.discordapp.com'], objectSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'self'"], formAction: ["'self'"]
   } } }));
   app.use(express.json({ limit: '16kb' }));
   app.use('/api', (req, res, next) => {

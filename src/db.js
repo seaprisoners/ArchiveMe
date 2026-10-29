@@ -28,16 +28,20 @@ export function stickerPreview(id, format) {
   if (!snowflake(id)) return { url: null, contentType: null };
   if (format === 1 || format === 2) return { url: `https://cdn.discordapp.com/stickers/${id}.png`, contentType: 'image/png' };
   if (format === 4) return { url: `https://cdn.discordapp.com/stickers/${id}.gif`, contentType: 'image/gif' };
-  // Lottie is JSON animation and must never be passed to an image element.
+  // JSON animation is fetched and rendered by the authorized browser, never by <img>.
+  if (format === 3) return { url: `https://cdn.discordapp.com/stickers/${id}.json`, contentType: 'application/json' };
   return { url: null, contentType: null };
 }
 function stickerFromMime(id, contentType, legacyUrl = null) {
   if (contentType === 'image/gif') return stickerPreview(id, 4);
   if (contentType === 'image/png') return stickerPreview(id, 1);
-  // Old archives only kept Discord's URL. Recognize exact canonical paths, never
-  // trust a third-party host, query, or a .json Lottie animation as an image.
+  if (contentType === 'application/json') return stickerPreview(id, 3);
+  // Old archives kept only a URL or no format at all. JSON URLs identify Lottie;
+  // do not guess unknown formats or trust third-party hosts and query strings.
   if (legacyUrl === `https://cdn.discordapp.com/stickers/${id}.gif`) return stickerPreview(id, 4);
   if (legacyUrl === `https://cdn.discordapp.com/stickers/${id}.png`) return stickerPreview(id, 1);
+  if (legacyUrl === `https://cdn.discordapp.com/stickers/${id}.json`) return stickerPreview(id, 3);
+  // A missing URL on old records is ambiguous: do not guess from the ID.
   return stickerPreview(id, null);
 }
 export function parseEmojis(content) {

@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
+import { fetchStickerAnimation, isLottieStickerUrl } from './lottieSticker.js';
 
 const paths = {
   archive: <><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 13h6M9 16h4"/></>,
@@ -84,7 +85,37 @@ function isSafePreviewUrl(value) {
       && /^\/(?:emojis|stickers)\/\d{16,22}\.(?:png|gif)$/.test(url.pathname) && !url.search && !url.hash;
   } catch { return false; }
 }
-function EmotePreview({ item }) {
+function LottieSticker({ url, name, onFailure }) {
+  const container = useRef(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    if (!container.current || !isLottieStickerUrl(url)) return;
+    const controller = new AbortController();
+    let animation;
+    const element = container.current;
+    const observer = new IntersectionObserver(entries => {
+      if (!entries[0]?.isIntersecting) { animation?.pause(); return; }
+      observer.disconnect();
+      (async () => {
+        try {
+          const data = await fetchStickerAnimation(url, controller.signal);
+          if (controller.signal.aborted) return;
+          const { default: player } = await import('lottie-web/build/player/lottie_light_canvas.min.js');
+          if (controller.signal.aborted) return;
+          animation = player.loadAnimation({ container: element, renderer: 'canvas', loop: true,
+            autoplay: !window.matchMedia('(prefers-reduced-motion: reduce)').matches, animationData: data });
+          animation.addEventListener('data_failed', () => { setFailed(true); onFailure?.(); });
+        } catch { if (!controller.signal.aborted) { setFailed(true); onFailure?.(); } }
+      })();
+    });
+    observer.observe(element);
+    return () => { observer.disconnect(); controller.abort(); animation?.destroy(); };
+  }, [url, onFailure]);
+  if (failed) return null;
+  return <span className="media-preview lottie-preview" ref={container} role="img" aria-label={name || 'Animated sticker'}/>;
+}
+function EmotePreview({ item, onFailure }) {
+  if (item?.kind === 'sticker' && isLottieStickerUrl(item.url)) return <LottieSticker url={item.url} name={item.name} onFailure={onFailure}/>;
   if (item?.url && isSafePreviewUrl(item.url)) return <img className="media-preview" src={item.url} alt={item.name || 'Sticker or emote'} loading="lazy" referrerPolicy="no-referrer"/>;
   if (item?.kind === 'emoji' && !/^\d{16,22}$/.test(String(item.id))) return <span className="media-preview" role="img" aria-label={item.name || 'Emote'}>{item.name}</span>;
   return null;
@@ -136,15 +167,22 @@ function Statistics({ guild, channels, channel, setChannelId, stats, loading, er
     </>}
   </div>;
 }
+function MediaItem({ item }) {
+  const [previewFailed, setPreviewFailed] = useState(false);
+  const lottie = item.kind === 'sticker' && isLottieStickerUrl(item.url);
+  return <article className="card media-item">
+    {(item.kind === 'emoji' || item.kind === 'sticker') && <EmotePreview item={item} onFailure={setPreviewFailed}/>}
+    <div className="media-meta"><strong>{item.name || (item.kind === 'sticker' ? 'Sticker' : item.kind === 'emoji' ? 'Emote' : 'Attachment')}</strong><span>{item.kind === 'sticker' ? 'Sticker' : item.kind === 'emoji' ? 'Emote' : item.contentType || 'Attachment'}</span>{item.count > 1 && <span>{formatNumber(item.count)} uses in this message</span>}{item.size != null && <span>{formatNumber(item.size)} bytes</span>}<span>{item.authorName || 'Unknown member'} · {formatDate(item.createdAt)}</span></div>
+    {item.url && (isSafeMediaLink(item.url) || lottie) ? <a href={item.url} target="_blank" rel="noopener noreferrer">Open on Discord <Icon name="external" size={15}/></a> : null}
+    {item.kind === 'sticker' && (!item.url || previewFailed) && <span>Sticker preview unavailable</span>}
+  </article>;
+}
 function Media({ guild, channels, channel, setChannelId, items, loading, loadingMore, nextBefore, error, loadMore, retry }) {
   return <div className="page-content media-page"><div className="heading-row"><div><div className="eyebrow page-eyebrow">ARCHIVED MEDIA</div><h1>Media, stickers &amp; emotes</h1><p className="page-subtitle">Find media shared in {guild?.name || 'your community'}.</p></div></div>
     <div className="statistics-filters card"><ChannelSelect channels={channels} channelId={channel?.id || ''} setChannelId={setChannelId} id="media-channel"/></div>
-    <p>Stickers and emotes appear here when archived after this feature was enabled. Images load from Discord when available; ArchiveMe does not keep copies. External links may expire. Animated Lottie stickers have no safe preview.</p>
+    <p>Stickers and emotes appear here when archived after this feature was enabled. Images load from Discord when available; ArchiveMe does not keep copies. External links may expire. Animated stickers play when visible, unless reduced motion is enabled.</p>
     {!channel ? <StatePanel icon="hash" title="Choose a channel" description="Select a channel above to see its media."/> : !channel.enabled ? <StatePanel icon="lock" title="Channel not enabled" description="Enable this channel in settings to see its media."/> : loading ? <LoadingBlock lines={5}/> : error && !items.length ? <StatePanel icon="info" title="Couldn’t load media" description={error} action={<button className="text-button" onClick={retry}>Try again</button>}/> : !items.length ? <StatePanel icon="inbox" title="No archived media" description="Files, stickers, and emotes from new opted-in messages will show up here."/> : <>
-      <div className="media-grid">{items.map((item, index) => <article className="card media-item" key={`${item.messageId}-${item.kind}-${item.id}-${index}`}>
-        {(item.kind === 'emoji' || item.kind === 'sticker') && <EmotePreview item={item}/>}
-        <div className="media-meta"><strong>{item.name || (item.kind === 'sticker' ? 'Sticker' : item.kind === 'emoji' ? 'Emote' : 'Attachment')}</strong><span>{item.kind === 'sticker' ? 'Sticker' : item.kind === 'emoji' ? 'Emote' : item.contentType || 'Attachment'}</span>{item.count > 1 && <span>{formatNumber(item.count)} uses in this message</span>}{item.size != null && <span>{formatNumber(item.size)} bytes</span>}<span>{item.authorName || 'Unknown member'} · {formatDate(item.createdAt)}</span></div>
-        {item.url && isSafeMediaLink(item.url) ? <a href={item.url} target="_blank" rel="noopener noreferrer">Open on Discord <Icon name="external" size={15}/></a> : item.kind === 'sticker' ? <span>Image preview unavailable</span> : null}</article>)}</div>
+      <div className="media-grid">{items.map((item, index) => <MediaItem item={item} key={`${item.messageId}-${item.kind}-${item.id}-${index}`}/>)}</div>
       {(nextBefore || loadingMore || error) && <div className="load-footer">{error && <p role="alert">{error}</p>}<button className="secondary-button" onClick={loadMore} disabled={loadingMore || !nextBefore}>{loadingMore ? 'Loading…' : 'Load older media'}</button></div>}
     </>}
   </div>;
