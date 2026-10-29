@@ -2,7 +2,7 @@
 
 **Start learning:** the [complete beginner handbook](docs/BEGINNER_GUIDE.md) explains each component, Discord setup, security decisions, and operation step by step. To change the appearance yourself, follow the [easy website redesign guide](docs/REDESIGN_WEBSITE.md). **Portfolio deployment:** this repository is public source code; the running application is intentionally local-only until hosting, consent, and privacy review are complete. Do not upload its `.env` or `data/` directory.
 
-**Private, opt-in Discord text-channel archiving and analytics** — an educational, read-only application. An official bot records messages from enabled server text channels. A separate website uses Discord login and checks **current Manage Server permission and channel-specific viewing permission on every request** before returning archive content or statistics. The public demo uses synthetic data only.
+**Private, opt-in Discord text-channel archiving and analytics** — an educational, read-only application. An official bot records messages from enabled server text channels. A separate website uses Discord login and checks **current Manage Server permission and channel-specific viewing permission on every request** before returning archive content or statistics. There is no public or synthetic in-browser demo; use a consenting test server with invented messages for screenshots.
 
 > Early-stage portfolio project; not audited and not a compliance certification. Do not deploy to a real community until you review the privacy and Discord policy checklist below. This project never uses a self-bot.
 
@@ -11,8 +11,8 @@
 - The front page introduces the official bot and, when it is configured and online, offers an **Add bot to your server** link. It requests only View Channel and Read Message History—not Administrator—and never enables archiving automatically. Because this site is currently localhost-only, people on other computers cannot use this website until you deliberately deploy it with HTTPS and review privacy/hosting obligations.
 - Admins enable/disable individual server text channels with `/archive enable channel:#example`, `/archive disable channel:#example`, or the admin dashboard. Every channel defaults to **off**.
 - Bot listens for new messages and edits through the official Gateway; it deletes recorded messages on deletion events when observed. Deleting/reenabling a channel is not a recovery mechanism. Bot removal deletes that server's local records.
-- Website displays a read-only timeline and activity-per-day chart. Authentication is Discord OAuth2; **authorization is a fresh Discord membership/Manage Server and channel View/History check**, not just login or a role cached in the database. Admins may purge a channel's recorded messages through the API.
-- Data expires after 90 days by default. Attachments, DMs, voice, threads, historical imports, and member-facing access are **not implemented**. The UI cannot promise a complete or legally durable archive: downtime, missing events, and API limitations produce gaps.
+- Website displays a read-only timeline and **Statistics** and **Media & stickers** views with message counts, hourly/category summaries, and attachment/sticker **metadata only** (including optional external Discord links). Authentication is Discord OAuth2; **authorization is a fresh Discord membership/Manage Server and channel View/History check**, not just login or a role cached in the database. Admins may purge a channel's recorded messages through the API.
+- Data expires after 90 days by default. ArchiveMe does not fetch, store, serve, or download attachment/sticker binary files (users may open an external Discord-hosted link, which may expire). DMs, voice, threads, historical imports, and member-facing access are **not implemented**. Metadata collected for new messages cannot be reconstructed for old archived messages. The UI cannot promise a complete or legally durable archive: downtime, missing events, and API limitations produce gaps.
 
 ## How the pieces connect
 
@@ -45,7 +45,7 @@ GitHub holds **code**, not the running service or archive. A host must keep the 
    npm start
    ```
 
-   Alternatively put values in an untracked `.env` and run `node --env-file=.env src/index.js` (never share that file). Open `http://localhost:3000` and log in. The site is restricted to server managers. For an unconnected portfolio preview, use the synthetic demo button on the login page; it must not sign in or read the database.
+   Alternatively put values in an untracked `.env` and run `node --env-file=.env src/index.js` (never share that file). Open `http://localhost:3000` and log in. The site is restricted to server managers. There is no in-browser synthetic preview. For screenshots, sign into a consenting local test server containing only invented messages.
 5. Enable **one test text channel**. Send consenting test messages. The bot starts recording *new* messages after enabling; no historical import occurs. Check the read-only website and analytics chart. Run `npm test` for automated checks. For backend development rebuild the UI with `npm --prefix web run build`; production serves that build from Express. Standalone Vite development does not proxy the backend by default.
 
 ## Core security model
@@ -68,7 +68,7 @@ A managed PostgreSQL service is a sensible later upgrade for separated bot and w
 
 Before any real community rollout, review the current [Discord Developer Policy](https://support-dev.discord.com/hc/en-us/articles/8563934450327-Discord-Developer-Policy), [Developer Terms](https://support-dev.discord.com/hc/en-us/articles/8563935748247-Discord-Developer-Terms-of-Service), [OAuth2 reference](https://docs.discord.com/developers/topics/oauth2), [permissions](https://docs.discord.com/developers/topics/permissions), and applicable privacy law. These may change. Confirm message-content eligibility and any required app review. Never use a normal user's token/self-bot, evade API rate limits, or assume admin opt-in alone is sufficient privacy notice for members.
 
-A real deployment needs a clearly visible, community-specific notice stating: what is recorded, which channels, who can view records, collection start date, retention period, hosting location, deletion requests, backups, and contact details. Do not archive sensitive channels by default. Stop collection and evaluate deletion when permission or consent changes. For GitHub screenshots and public demos, use **synthetic** content, never private server data. Seek legal advice where appropriate; this README is not legal advice.
+A real deployment needs a clearly visible, community-specific notice stating: what is recorded, which channels, who can view records, collection start date, retention period, hosting location, deletion requests, backups, and contact details. Do not archive sensitive channels by default. Stop collection and evaluate deletion when permission or consent changes. For GitHub screenshots, use **invented messages in a consenting test server**, never private server data; there is no built-in synthetic preview. Seek legal advice where appropriate; this README is not legal advice.
 
 ## Future roadmap
 
@@ -79,4 +79,4 @@ A real deployment needs a clearly visible, community-specific notice stating: wh
 
 ## Development
 
-`npm test` exercises opt-in ingestion, per-request denial, channel isolation, CSRF, input bounds, and deletion handling. CI builds the frontend and runs tests and dependency audit. Frontend is in `web/`; backend and bot live in `src/`. To make a portfolio screenshot, use the client-only synthetic preview, not a populated real archive.
+`npm test` exercises opt-in ingestion, per-request denial, channel isolation, CSRF, input bounds, and deletion handling. CI builds the frontend and runs tests and dependency audit. Frontend is in `web/`; backend and bot live in `src/`. For a portfolio screenshot, populate a consenting local test server with invented messages; never publish real private archive content.

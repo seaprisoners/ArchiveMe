@@ -1,8 +1,8 @@
 # ArchiveMe: start here
 
-ArchiveMe helps a Discord server manager keep a **small, opt-in archive** of messages. This guide is for someone who has never run a bot or used a terminal. You can try the pretend-data preview before making a Discord application.
+ArchiveMe helps a Discord server manager keep a **small, opt-in archive** of messages. This guide is for someone who has never run a bot or used a terminal. The built-in pretend-data preview has been removed; try the website with a consenting test server and invented messages.
 
-**Already set up on this computer?** You have a local Discord test application and an ignored private `.env` file. To use it, open a terminal, run `cd ~/Documents/ArchiveMe`, then `node --env-file=.env src/index.js`. Leave that terminal open. Visit [http://localhost:3000/](http://localhost:3000/) on this same computer; choose Discord login or the fake-data preview. If the terminal says the port is already in use, the app may already be running: open the page first rather than starting another copy. The code is public at [GitHub](https://github.com/seaprisoners/ArchiveMe), but the live website is **not** publicly hosted.
+**Already set up on this computer?** You have a local Discord test application and an ignored private `.env` file. To use it, open a terminal, run `cd ~/Documents/ArchiveMe`, then `node --env-file=.env src/index.js`. Leave that terminal open. Visit [http://localhost:3000/](http://localhost:3000/) on this same computer; choose Discord login; there is no fake-data preview. If the terminal says the port is already in use, the app may already be running: open the page first rather than starting another copy. The code is public at [GitHub](https://github.com/seaprisoners/ArchiveMe), but the live website is **not** publicly hosted.
 
 **Want the full technical explanation?** The original, detailed handbook is preserved in the [technical reference](TECHNICAL_REFERENCE.md). You do not need it to start. To change the appearance, use the short [website redesign guide](REDESIGN_WEBSITE.md).
 
@@ -11,7 +11,7 @@ ArchiveMe helps a Discord server manager keep a **small, opt-in archive** of mes
 ## Contents
 
 1. [The idea and what works today](#1-the-idea-and-what-works-today)
-2. [See the safe preview first](#2-see-the-safe-preview-first)
+2. [Install the project without connecting a bot](#2-install-the-project-without-connecting-a-bot)
 3. [Set up a Discord test bot](#3-set-up-a-discord-test-bot)
 4. [Connect the app on your computer](#4-connect-the-app-on-your-computer)
 5. [Try one opted-in test channel](#5-try-one-opted-in-test-channel)
@@ -25,15 +25,15 @@ Imagine putting a labeled notebook beside **one** Discord channel. The bot write
 
 ArchiveMe has three parts that work together on your computer: a Discord bot, a website/API server, and a SQLite database file. The browser shows the website. GitHub holds the code, **not** a running public website or a hosted archive. The current project is an educational, early-stage app, not an audited service.
 
-**What is implemented:** A server manager can enable or disable individual ordinary server text channels with the dashboard or `/archive enable` and `/archive disable`. New channels start **off**. For enabled channels, the bot records new non-bot text messages, applies edits when it sees them, and removes saved messages when it sees their deletion events. The manager can view saved messages and a daily message-count chart, or purge a channel's saved messages. Messages normally age out after 90 days. The website also has a clearly labeled **synthetic preview** with made-up data.
+**What is implemented:** A server manager can enable or disable individual ordinary server text channels with the dashboard or `/archive enable` and `/archive disable`. New channels start **off**. For enabled channels, the bot records new non-bot text messages, applies edits when it sees them, and removes saved messages when it sees their deletion events. The manager can view saved messages and a daily message-count chart, or purge a channel's saved messages. Messages normally age out after 90 days. The website has a **Statistics** and **Media & stickers** views for authorized managers: message activity, hourly/category summaries, and attachment/sticker names, types, sizes, and Discord-hosted links where available. It stores metadata only, not attachment or sticker files; ArchiveMe does not fetch, serve, or download binary files. A person can choose to open an external Discord link, which may expire. Older archived messages may lack metadata permanently. The former synthetic preview is no longer available.
 
 **Who can read the real archive:** The signed-in person must currently have Discord's **Manage Server** permission and **View Channel** plus **Read Message History** for the particular channel. The server checks again for protected requests. Regular members do not get an archive view. A Discord login by itself is not a pass to see messages.
 
-**What is not implemented:** There is no import of old messages, all-server search, full-text database search, member dashboard, public real-data demo, export, attachments archive, thread archive, DM archive, voice archive, automatic backup, or hosted service. Search on the message page checks **only messages already loaded in that browser**. The bot can miss messages or deletions while it is offline. It is not a complete copy of Discord. Do not rely on it as a definitive history.
+**What is not implemented:** There is no import of old messages, all-server search, full-text database search, member dashboard, synthetic or public real-data demo, export, attachment/sticker **file storage or download**, thread archive, DM archive, voice archive, automatic backup, or hosted service. Search on the message page checks **only messages already loaded in that browser**. The bot can miss messages or deletions while it is offline. It is not a complete copy of Discord. Do not rely on it as a definitive history.
 
 On the **front page**, you may see **Add bot to your server**. The website gets that link from `/api/public-config`. The link appears **only when a valid application ID is configured and the bot is connected and synchronized**. Otherwise, the page says installation is unavailable. That link requests the `bot` and `applications.commands` scopes and bot permissions for View Channel and Read Message History. It does **not** switch on any channel. The front page also offers **Continue with Discord** for *human website login*. These are different actions.
 
-## 2. See the safe preview first
+## 2. Install the project without connecting a bot
 
 You need [Node.js](https://nodejs.org/en/download) version **24.12.0 or later within version 24, or version 26 or later**, plus npm. Installing Node usually installs npm too. You do **not** need a bot token for this section.
 
@@ -63,15 +63,15 @@ Now start the server **without loading a `.env` file**:
 npm start
 ```
 
-Leave this terminal open. In a browser **on the same computer**, open [http://localhost:3000/](http://localhost:3000/). Click **Preview synthetic demo**. Try Overview, Message archive, and Channel settings. The names and messages are made up. Changing a switch or pressing the demo purge control changes browser memory only. Refreshing restores the sample. No Discord messages are fetched for this preview.
+Leave this terminal open. In a browser **on the same computer**, open [http://localhost:3000/](http://localhost:3000/). You can see the sign-in page, but without Discord credentials there is no usable dashboard and **no synthetic preview**. Next, follow the test-bot steps below to access Overview, Message archive, Statistics, Media & stickers, and Channel settings with invented messages in a consenting test server.
 
-`npm start` does not read `.env` automatically. **But** if you previously set Discord credentials in this terminal's environment, it may still connect the bot. For a truly disconnected preview, use a fresh terminal without exported credentials and do not load `.env`. Press **Ctrl+C** in the server terminal to stop it when you are done.
+`npm start` does not read `.env` automatically. **But** if you previously set Discord credentials in this terminal's environment, it may still connect the bot. To check an intentionally disconnected sign-in page, use a fresh terminal without exported credentials and do not load `.env`. Press **Ctrl+C** in the server terminal to stop it when you are done.
 
-You can inspect two simple status pages while the server is running: [http://localhost:3000/health](http://localhost:3000/health) and [http://localhost:3000/ready](http://localhost:3000/ready). `/health` can say the process is healthy even without a bot. `/ready` returns an unavailable result until a bot is connected **and** its initial server/channel sync succeeds. That is normal in preview mode.
+You can inspect two simple status pages while the server is running: [http://localhost:3000/health](http://localhost:3000/health) and [http://localhost:3000/ready](http://localhost:3000/ready). `/health` can say the process is healthy even without a bot. `/ready` returns an unavailable result until a bot is connected **and** its initial server/channel sync succeeds. That is normal before test-bot setup.
 
 ## 3. Set up a Discord test bot
 
-Only continue if you have **your own test server** and a text channel for invented messages. Tell every test participant what will be stored. If you cannot do that, stay with the synthetic preview.
+Only continue if you have **your own test server** and a text channel for invented messages. Tell every test participant what will be stored. If you cannot do that, do not enable archiving; there is no synthetic preview.
 
 1. Open the official [Discord Developer Portal](https://discord.com/developers/applications). Create a **new application**. Copy its **Application ID**. Later it goes in `DISCORD_CLIENT_ID`.
 
@@ -89,7 +89,7 @@ The bot's `/archive` command is registered when the configured app starts. It ma
 
 We need to give the running app three values: bot token, application ID, and OAuth2 client secret. Keep them **out of code, screenshots, chat messages, and GitHub**. The tracked `.env.example` contains placeholders, not working credentials. A private local `.env` is an easy option.
 
-After stopping any preview server with **Ctrl+C**, go back to the ArchiveMe folder. If you have **never made a `.env` file**, run:
+After stopping the credential-free server with **Ctrl+C**, go back to the ArchiveMe folder. If you have **never made a `.env` file**, run:
 
 ```sh
 cd ~/Documents/ArchiveMe
@@ -131,7 +131,7 @@ Start with a new ordinary text channel such as `#archive-lab`. Use only invented
 
 1. Post `before opt-in` in Discord. It should **not** later appear in ArchiveMe. The app does not import old messages.
 2. On the signed-in website, open **Channel settings** and switch on just `#archive-lab`. Or, as a permitted manager in Discord, use `/archive enable channel:#archive-lab`. Check the bot and the manager can both view and read history in that channel.
-3. Post `hello from my test channel` **after** enablement, using a non-bot test account. Open **Message archive**, select the channel, and refresh or reselect to fetch it. The website does not live-push new messages. The Overview chart shows daily counts for the selected channel, not a transcript of every server channel.
+3. Post `hello from my test channel` **after** enablement, using a non-bot test account. Open **Message archive**, select the channel, and refresh or reselect to fetch it. The website does not live-push new messages. Statistics shows daily/hourly counts and categories; Media & stickers shows available attachment/sticker metadata and optional external Discord links for the selected authorized channel. These are not transcripts of every server channel. ArchiveMe does not store or download the files; Discord links may expire, and older messages may lack metadata.
 4. Edit that test message in Discord. Reload the archive and look for the new text if the bot saw the edit event. Delete it in Discord. Reload again and look for its removal if the bot saw the delete event. Bot downtime can cause gaps or stale saved text.
 5. Turn the channel **off**. That stops new collection and hides its existing saved message view, but **does not erase saved rows**. Turning it on again can reveal them. Use **Purge** in Channel settings only for this test data if you want to remove saved messages; the original Discord messages and earlier backups are separate.
 
@@ -153,7 +153,7 @@ Default live-message retention is **90 days**, with cleanup at startup and hourl
 
 If you later host it for a real community, pause first for the privacy and policy review above. You would need one reliably running Node process, a private **persistent** disk for SQLite, a private secret store, backups that you can restore, a domain, HTTPS, and monitoring. Production mode requires an HTTPS `BASE_URL` and all three Discord credentials. Register the matching `https://your-domain.example/auth/callback` redirect in Discord. Keep the Node port private behind a properly configured HTTPS reverse proxy. `/ready`, not just `/health`, tells you whether the Discord bot and its initial sync are ready. A cheap host that forgets its disk on restart will lose the archive. The [technical reference's deployment section](TECHNICAL_REFERENCE.md#14-deployment-tls-persistence-and-operations) explains the harder steps. **Do not treat that example as a deployed service.**
 
-Want to change colors, text, layout, or buttons? Follow [Redesigning ArchiveMe's website](REDESIGN_WEBSITE.md). Website words and structure live in `web/src/main.jsx`; styles live in `web/src/styles.css`. After a design change, run `npm --prefix web run build`, refresh the browser page, and check the synthetic preview. A redesign must not remove the permissions checks, demo labeling, or install/login distinction.
+Want to change colors, text, layout, or buttons? Follow [Redesigning ArchiveMe's website](REDESIGN_WEBSITE.md). Website words and structure live in `web/src/main.jsx`; styles live in `web/src/styles.css`. After a design change, run `npm --prefix web run build`, refresh the browser page, and check the sign-in page and authorized test-server views. A redesign must not remove permission checks, the attachment/sticker metadata-only limitation, or the install/login distinction.
 
 ## 8. Troubleshooting and small glossary
 
@@ -161,7 +161,7 @@ Want to change colors, text, layout, or buttons? Follow [Redesigning ArchiveMe's
 | --- | --- |
 | `node` is missing or too old | Install supported [Node.js](https://nodejs.org/en/download). Run `node --version` again. |
 | The page says “Frontend not built” | From the ArchiveMe folder, run `npm --prefix web ci` and `npm --prefix web run build`, then refresh. |
-| `/ready` says unavailable | Expected in preview mode. For live mode, check bot startup logs, token, Message Content intent, and network access. |
+| `/ready` says unavailable | Expected before a bot is connected. For live mode, check bot startup logs, token, Message Content intent, and network access. |
 | **Add bot to your server** is absent | The link appears only with a valid application ID **and** a ready, synchronized bot. You can use the Portal's installation flow for initial setup. |
 | Discord sign-in fails | Check that `BASE_URL` is `http://localhost:3000`, that the Portal redirect is exactly `http://localhost:3000/auth/callback`, and that the app ID and secret match. Retry login rather than reusing an old callback URL. |
 | Signed in, but no server or channel appears | Check bot installation, manager's Manage Server permission, and **both** person's and bot's channel permissions. Refresh after changing them. |
@@ -170,4 +170,4 @@ Want to change colors, text, layout, or buttons? Follow [Redesigning ArchiveMe's
 
 **Glossary:** A **server** (called a *guild* in Discord's API) contains channels. A **bot** is a separate Discord account run by your app; its **token** is its secret password-like key. A **Discord application** is the Portal setup that owns that bot and the website's OAuth2 login credentials. **Install/invite** adds the bot to a server; **login** identifies a person to the website. **Opt-in** means explicitly enabling an individual channel; by default none are enabled. A **database** is where this app saves its records, in a local SQLite file. An **API** is how the website asks the server for allowed data. A **terminal** is the command window used to start the app. **Purge** deletes a channel's saved messages from the live database; it is not the same as turning collection off.
 
-For the deeper explanation of authentication, permissions, storage, testing, backups, and deployment, return to the [full technical reference](TECHNICAL_REFERENCE.md). You can learn those pieces one at a time, after the safe preview works.
+For the deeper explanation of authentication, permissions, storage, testing, backups, and deployment, return to the [full technical reference](TECHNICAL_REFERENCE.md). You can learn those pieces one at a time, after the consenting test-server exercise works.
