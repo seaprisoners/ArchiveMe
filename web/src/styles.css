@@ -1,150 +1,117 @@
-/* ArchiveMe's plain starting stylesheet.
-   Change the small set of colors and spacing below, then edit a named section.
-   No font downloads, gradients, shadows, animation, or decorative branding are needed.
-   This file controls appearance only: keep permission checks in the application. */
+/* ArchiveMe: a clean CSS starting point.
+   Start in :root. Change one variable, build the site, then refresh.
+   Rules below are mostly structure: they keep navigation, charts, forms and media usable.
+   No imported fonts, visual effects, or design framework. */
 :root {
   color-scheme: light;
-  --page: #ffffff;
-  --surface: #ffffff;
+  --page: #fff;
+  --surface: #fff;
   --text: #202020;
-  --muted: #505050;
-  --border: #777777;
-  --accent: #184c82;
-  --accent-text: #ffffff;
+  --muted: #555;
+  --border: #888;
+  --accent: #174c81;
+  --accent-text: #fff;
   --focus: #084f9c;
-  --chart-track: #e4e4e4;
-  --preview-surface: #f4f4f4;
+  --chart-track: #eee;
   --space: 1rem;
-  font-family: system-ui, sans-serif;
-  line-height: 1.5;
+  font: 1rem/1.5 system-ui, sans-serif;
   color: var(--text);
   background: var(--page);
 }
 
-/* Base: preserve readable text and visible keyboard focus. */
+/* 1. Base: readable content and visible keyboard focus. */
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; }
-button, input, select { font: inherit; }
-button { cursor: pointer; }
-button:disabled, input:disabled { cursor: not-allowed; opacity: .65; }
-a { color: var(--accent); }
+body { min-width: 320px; margin: 0; }
 img, svg { max-width: 100%; }
 h1, h2, h3, p { margin-top: 0; }
 h1 { font-size: clamp(1.75rem, 4vw, 2.5rem); line-height: 1.2; }
 h2 { font-size: 1.25rem; }
 h3 { font-size: 1.1rem; }
-:where(a, button, input, select):focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 3px;
-}
-.sr-only {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
-}
+a { color: var(--accent); }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+:disabled { cursor: not-allowed; opacity: .65; }
+:where(a, button, input, select):focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
-/* Shared controls and simple content boundaries. */
+/* 2. Buttons, inputs and content blocks. */
 .primary-button, .secondary-button, .danger-button, .icon-button,
 .text-button, .nav-item, .quick-item, .purge-button, .clear-search,
 .mobile-menu, .sidebar-close {
   display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-  min-height: 2.75rem; padding: .5rem .85rem;
-  border: 1px solid var(--border); border-radius: .25rem;
-  background: var(--surface); color: var(--text); text-decoration: none;
+  min-height: 2.75rem; padding: .5rem .75rem;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  text-decoration: none;
 }
 .primary-button { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
-.danger-button { border-color: #8c2424; color: #8c2424; }
-:where(button, a):where(:hover) { text-decoration: underline; }
+.danger-button, .purge-button { border-color: #923333; color: #923333; }
 .icon-button, .clear-search, .mobile-menu, .sidebar-close { padding: .5rem; }
-select, input { min-height: 2.5rem; max-width: 100%; border: 1px solid var(--border); border-radius: .25rem; background: var(--surface); color: var(--text); padding: .4rem .6rem; }
-.card, .stat-card, .settings-intro, .access-card,
-.confirm-modal { border: 1px solid var(--border); background: var(--surface); padding: var(--space); }
-.inline-alert, .inline-success { border: 1px solid var(--border); padding: .75rem; margin-block: .75rem; }
-.inline-alert { border-color: #8c2424; }
+input, select { min-height: 2.5rem; max-width: 100%; padding: .4rem .6rem; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.card, .stat-card, .settings-intro, .access-card, .confirm-modal { min-width: 0; padding: var(--space); border: 1px solid var(--border); background: var(--surface); }
+.inline-alert, .inline-success { margin-block: .75rem; padding: .75rem; border: 1px solid var(--border); }
+.inline-alert { border-color: #923333; }
 .inline-success { border-color: #287046; }
 .page-subtitle, .card-heading p, .stat-note, .settings-row-info span,
 .message-meta time, .edited-label, .archive-overline, .search-hint,
-.bot-install-note, .bot-install-unavailable,
-.access-footer, .settings-note { color: var(--muted); }
+.bot-install-note, .bot-install-unavailable, .access-footer, .settings-note,
+.media-meta { color: var(--muted); }
 
-/* Sign-in and access pages. */
-.login-layout { min-height: 100vh; display: grid; place-items: center; }
-.login-panel { width: min(100%, 34rem); padding: clamp(1rem, 4vw, 3rem); }
-.login-actions, .access-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+/* 3. Login and access screens. */
+.login-layout, .boot-loading { min-height: 100vh; display: grid; place-items: center; padding: var(--space); }
+.login-panel { width: min(100%, 34rem); padding: var(--space); }
 .login-content { margin-top: 2rem; }
 .login-content > *, .access-card > * { margin-bottom: 1rem; }
-.brand-mark { flex: none; }
-.brand, .eyebrow { display: inline-flex; align-items: center; gap: .4rem; }
+.login-actions, .access-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.brand, .eyebrow { display: inline-flex; align-items: center; gap: .5rem; }
 .brand { font-weight: 700; }
-.access-layout { min-height: 100vh; display: grid; align-content: center; justify-items: center; padding: 1rem; gap: 1rem; }
+.access-layout { min-height: 100vh; display: grid; place-content: center; gap: var(--space); padding: var(--space); }
 .access-card { width: min(100%, 36rem); }
-.boot-loading { min-height: 100vh; display: grid; place-content: center; gap: 1rem; }
 
-/* Dashboard: navigation, main area, headings. */
+/* 4. Dashboard shell, navigation and page headings. */
 .app-shell { min-height: 100vh; display: flex; }
-.sidebar { width: 15rem; flex: 0 0 15rem; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+.sidebar { flex: 0 0 15rem; width: 15rem; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--surface); }
 .sidebar-brand, .sidebar-scroll, .sidebar-bottom { padding: var(--space); }
 .sidebar-scroll { flex: 1; overflow-y: auto; }
 .sidebar-bottom { border-top: 1px solid var(--border); }
 .sidebar-scrim, .sidebar-close, .mobile-menu { display: none; }
-.guild-picker-wrap, .nav-section { margin-top: 1rem; }
-.guild-picker { position: relative; display: flex; align-items: center; gap: .5rem; min-height: 3rem; border: 1px solid var(--border); padding: .5rem; }
+.guild-picker-wrap, .nav-section { margin-top: var(--space); }
+.guild-picker { position: relative; display: flex; align-items: center; gap: .5rem; min-height: 3rem; padding: .5rem; border: 1px solid var(--border); }
 .guild-picker select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .guild-picker:focus-within { outline: 3px solid var(--focus); outline-offset: 3px; }
 .guild-picker-text, .settings-row-info { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
-.guild-badge, .avatar { display: inline-grid; place-items: center; flex: none; width: 2.5rem; height: 2.5rem; border: 1px solid var(--border); overflow: hidden; }
+.guild-badge, .avatar { display: inline-grid; place-items: center; flex: none; width: 2.5rem; height: 2.5rem; overflow: hidden; border: 1px solid var(--border); }
 .guild-badge img, .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .nav-item { display: flex; justify-content: flex-start; width: 100%; margin: .25rem 0; text-align: left; }
 .nav-item.active { border-width: 2px; font-weight: 700; }
-.nav-heading, .workspace-label { font-weight: 700; }
-.main-area { min-width: 0; flex: 1; }
-.topbar { min-height: 4rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; border-bottom: 1px solid var(--border); padding: .75rem clamp(1rem, 3vw, 2rem); }
+.nav-heading, .card-kicker, .stat-label { font-weight: 700; }
+.main-area { flex: 1; min-width: 0; }
+.topbar { min-height: 4rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem var(--space); border-bottom: 1px solid var(--border); }
 .topbar-left, .topbar-right, .breadcrumb, .heading-row { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
-.page-content { width: min(100%, 90rem); margin-inline: auto; padding: clamp(1rem, 3vw, 2rem); }
-.heading-row { justify-content: space-between; margin-bottom: 1.5rem; }
-.read-only-tag, .admin-tag, .message-count, .settings-count { display: inline-block; border: 1px solid var(--border); padding: .35rem .6rem; }
+.page-content { width: min(100%, 90rem); margin-inline: auto; padding: var(--space); }
+.heading-row { justify-content: space-between; margin-bottom: var(--space); }
+.admin-tag, .message-count, .settings-count { display: inline-block; padding: .35rem .6rem; border: 1px solid var(--border); }
 
-/* Overview and Statistics & Media: charts and cards remain readable. */
+/* 5. Overview and statistics. Change chart colors in :root. */
 .stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space); margin-bottom: var(--space); }
 .stat-card { display: flex; flex-direction: column; align-items: flex-start; gap: .4rem; }
 .stat-card strong { font-size: 1.5rem; }
 .overview-grid, .statistics-grid, .statistics-media-grid, .media-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space); }
-.activity-card, .quick-card { min-width: 0; }
-.card-heading, .archive-toolbar, .archive-tools, .settings-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space); }
-.card-kicker, .stat-label { font-weight: 700; }
+.card-heading, .archive-toolbar, .archive-tools, .settings-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space); }
 .quick-list { display: grid; gap: .5rem; }
 .quick-item { justify-content: flex-start; text-align: left; }
 .select-wrap, .archive-channel, .search-field { display: inline-flex; align-items: center; gap: .5rem; }
-/* Statistics & Media: counts remain visible when bars or thumbnails cannot load. */
 .statistics-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space); margin-bottom: var(--space); }
-.statistics-page > .card { min-width: 0; margin-bottom: var(--space); }
-/* Vertical columns. Wide charts scroll sideways on small screens instead of crushing labels. */
-.column-chart {
-  display: flex; align-items: stretch; gap: .5rem; width: 100%; min-width: 0;
-  overflow-x: auto; padding: .5rem 0 1rem; scrollbar-gutter: stable;
-}
-.column-item {
-  display: flex; flex-direction: column; align-items: center; gap: .4rem;
-  flex: 1 0 max(2.75rem, 3.5%); min-width: 0; max-width: 9rem;
-  font-variant-numeric: tabular-nums;
-}
+.statistics-page > .card { margin-bottom: var(--space); }
+/* Vertical bars scroll sideways on narrow screens; labels and values stay visible. */
+.column-chart { display: flex; align-items: stretch; gap: .5rem; width: 100%; min-width: 0; overflow-x: auto; padding: .5rem 0 1rem; }
+.column-item { flex: 1 0 max(2.75rem, 3.5%); min-width: 0; max-width: 9rem; display: flex; flex-direction: column; align-items: center; gap: .4rem; font-variant-numeric: tabular-nums; }
 .column-value { min-height: 1.5rem; white-space: nowrap; }
-.column-track { display: flex; align-items: flex-end; width: min(100%, 3.25rem); height: 11rem; background: var(--chart-track); border: 1px solid var(--border); }
+.column-track { display: flex; align-items: flex-end; width: min(100%, 3.25rem); height: 11rem; border: 1px solid var(--border); background: var(--chart-track); }
 .column-fill { display: block; width: 100%; background: var(--accent); }
-.column-label { display: block; width: 100%; min-height: 2.5rem; text-align: center; overflow-wrap: anywhere; line-height: 1.2; font-size: .85rem; }
+.column-label { width: 100%; min-height: 2.5rem; text-align: center; overflow-wrap: anywhere; line-height: 1.2; font-size: .85rem; }
 .column-preview-slot { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; }
 .column-item .media-preview { width: 2.5rem; height: 2.5rem; font-size: 1.4rem; }
-.media-item { min-width: 0; border: 1px solid var(--border); padding: var(--space); overflow-wrap: anywhere; }
-.media-meta { display: flex; flex-direction: column; gap: .25rem; color: var(--muted); overflow-wrap: anywhere; }
-.media-meta strong { color: var(--text); }
-.media-item a { display: inline-flex; align-items: center; gap: .25rem; margin-top: .5rem; }
-/* The browser may display a safe Discord-hosted image; this is not local file storage. */
-.media-preview {
-  display: grid; place-items: center; width: 5.5rem; height: 5.5rem; max-width: 100%;
-  border: 1px solid var(--border); background: var(--preview-surface);
-  object-fit: contain; overflow: hidden; font-size: 1.5rem; text-align: center;
-}
-.media-preview img { display: block; width: 100%; height: 100%; object-fit: contain; }
-
+/* The original daily line chart. */
 .chart-wrap { display: flex; min-height: 12rem; gap: .5rem; margin-top: 1rem; }
 .chart-scale { display: flex; flex-direction: column; justify-content: space-between; }
 .chart-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
@@ -152,41 +119,46 @@ select, input { min-height: 2.5rem; max-width: 100%; border: 1px solid var(--bor
 .chart-grid { display: none; }
 .chart-labels { display: flex; justify-content: space-between; gap: .5rem; }
 .state-panel, .loading-block { padding: 1.5rem; text-align: center; }
-.skeleton { height: 1rem; max-width: 100%; margin: .75rem auto; background: #dddddd; }
+.skeleton { height: 1rem; max-width: 100%; margin: .75rem auto; background: var(--chart-track); }
 
-/* Archive: keep messages, metadata labels and long text visible. */
-.archive-card { min-width: 0; }
+/* 6. Media and archived messages. Preview files load from Discord, not this server. */
+.media-item { min-width: 0; padding: var(--space); overflow-wrap: anywhere; }
+.media-meta { display: flex; flex-direction: column; gap: .25rem; overflow-wrap: anywhere; }
+.media-meta strong { color: var(--text); }
+.media-item a { display: inline-flex; align-items: center; gap: .25rem; margin-top: .5rem; }
+.media-preview { display: grid; place-items: center; width: 5.5rem; height: 5.5rem; max-width: 100%; border: 1px solid var(--border); background: var(--surface); object-fit: contain; overflow: hidden; font-size: 1.5rem; text-align: center; }
+.media-preview img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .archive-toolbar, .archive-tools, .message-list { padding: var(--space); }
 .archive-toolbar, .archive-tools { border-bottom: 1px solid var(--border); }
 .search-field { width: min(100%, 24rem); }
-.search-field input { min-width: 0; flex: 1; }
+.search-field input { flex: 1; min-width: 0; }
 .message-list { min-height: 14rem; }
-.date-divider { text-align: center; padding: 1rem 0; font-weight: 700; }
-.message { display: flex; align-items: flex-start; gap: .75rem; border-top: 1px solid var(--border); padding: 1rem 0; }
-.message-main { min-width: 0; flex: 1; }
+.date-divider { padding: 1rem 0; text-align: center; font-weight: 700; }
+.message { display: flex; align-items: flex-start; gap: .75rem; padding: 1rem 0; border-top: 1px solid var(--border); }
+.message-main { flex: 1; min-width: 0; }
 .message-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
 .message-content { white-space: pre-wrap; overflow-wrap: anywhere; }
 .message-attachments, .attachment-list, .sticker-list { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
-.attachment, .attachment-item, .sticker, .sticker-item { border: 1px solid var(--border); padding: .5rem; overflow-wrap: anywhere; }
-.pagination, .load-more-wrap { text-align: center; padding: 1rem; }
+.attachment, .attachment-item, .sticker, .sticker-item { padding: .5rem; border: 1px solid var(--border); overflow-wrap: anywhere; }
+.pagination, .load-more-wrap { padding: 1rem; text-align: center; }
 
-/* Settings: toggles have a readable text state even without special styling. */
+/* 7. Settings and confirmation dialog. */
 .settings-intro, .settings-row { display: flex; align-items: center; gap: var(--space); }
 .settings-header, .settings-row { padding: var(--space); border-bottom: 1px solid var(--border); }
 .settings-row-info { flex: 1; }
 .status-label { display: inline-flex; align-items: center; gap: .4rem; }
 .toggle { min-width: 2.75rem; min-height: 2.5rem; border: 2px solid var(--border); background: var(--surface); }
-.toggle-on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.toggle-on { border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
 .toggle span { display: block; width: 1rem; height: 1rem; border: 1px solid currentColor; background: var(--surface); }
 .toggle-on span { margin-left: auto; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; overflow: auto; padding: 1rem; background: #0009; }
 .confirm-modal { width: min(100%, 30rem); max-height: 100%; overflow-y: auto; }
 .modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; }
 
-/* Narrow screens: the navigation opens when its JS-added class is present. */
+/* 8. Mobile: keep the menu and content reachable. */
 @media (max-width: 760px) {
   .app-shell { display: block; }
-  .sidebar { position: fixed; z-index: 30; inset: 0 auto 0 0; width: min(18rem, 85vw); height: 100vh; overflow-y: auto; background: var(--surface); transform: translateX(-110%); }
+  .sidebar { position: fixed; z-index: 30; inset: 0 auto 0 0; width: min(18rem, 85vw); height: 100vh; overflow-y: auto; transform: translateX(-110%); }
   .sidebar.sidebar-open { transform: translateX(0); }
   .sidebar-scrim.visible { display: block; position: fixed; z-index: 20; inset: 0; background: #0009; }
   .sidebar-close, .mobile-menu { display: inline-flex; }
@@ -194,9 +166,7 @@ select, input { min-height: 2.5rem; max-width: 100%; border: 1px solid var(--bor
   .settings-row { flex-wrap: wrap; }
 }
 @media (max-width: 480px) {
-  .login-panel { padding: 1rem; }
   .login-actions > *, .modal-actions > * { width: 100%; }
-  .archive-toolbar, .archive-tools { align-items: flex-start; }
   .search-field { width: 100%; }
   .column-item { flex: 0 0 3rem; }
 }
