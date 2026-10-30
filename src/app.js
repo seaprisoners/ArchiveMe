@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { authRoutes } from './auth.js';
 import { dailyStats, listMedia, listMessages, purgeChannel, setChannelEnabled } from './db.js';
+import { lookupGuildMembers } from './discord.js';
 
 const snowflake = value => typeof value === 'string' && /^\d{16,22}$/.test(value);
 export function createApp({ db, discord, clientId = '', clientSecret = '', baseUrl = 'http://localhost:3000', oauthFetch, webDir = resolve('web/dist'), trustProxy = false }) {
@@ -71,6 +72,35 @@ export function createApp({ db, discord, clientId = '', clientSecret = '', baseU
     req.archiveChannel = channel;
     next();
   }
+  // Privacy: no blank-query member listing, no DB-backed roster, and a separate tight lookup budget.
+  // Discord name search matches username/nickname prefixes only; unavailable permissions/intents
+  // can prevent searches. Exact UID lookup still uses Discord's single-member REST endpoint.
+  app.get('/api/guilds/:guildId/members', requireAdmin,
+    rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: 'draft-8', legacyHeaders: false }), async (req, res) => {
+      const query = typeof req.query.query === 'string' ? req.query.query.trim() : '';
+      const limit = req.query.limit === undefined ? 10 : Number(req.query.limit);
+      if (Object.keys(req.query).some(key => key !== 'query' && key !== 'limit') ||
+        query.length < 3 || query.length > 100 || /[\x00-\x1f\x7f]/.test(query) || !Number.isInteger(limit) || limit < 1 || limit > 25)
+        return res.status(400).json({ error: 'query must be 3–100 characters and limit must be 1–25' });
+      // Never consult archived messages for membership; require current bot membership too.
+      const guild = await discord.getGuild(req.params.guildId);
+      if (!guild) return res.status(404).json({ error: 'Not found' });
+      try {
+        res.json({ members: await lookupGuildMembers(guild, query, limit) });
+      } catch (error) {
+        // Discord REST failures (including missing access/intent and upstream rate limits)
+        // do not disclose stale/partial data or Discord's internal error text.
+        if (error.status === 429 || error.code === 429) {
+          res.set('Retry-After', '60');
+          return res.status(429).json({ error: 'Discord rate limit reached; try again later' });
+        }
+        if (error.status === 403 || error.code === 50001 || error.code === 50013)
+          return res.status(503).json({ error: 'Discord member search unavailable; check bot access and member intent' });
+        // Do not log the query or raw Discord REST error: either may contain private data.
+        console.error('Discord member lookup unavailable');
+        return res.status(503).json({ error: 'Discord member lookup unavailable' });
+      }
+    });
   // Admin-only by design. Each request re-checks live Discord membership and permission.
   app.get('/api/guilds/:guildId/channels', requireAdmin, async (req, res) => {
     const guild = db.prepare('SELECT id,name,icon FROM guilds WHERE id=?').get(req.params.guildId);

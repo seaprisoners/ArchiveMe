@@ -1,6 +1,38 @@
 import { Client, GatewayIntentBits, Partials, ChannelType, PermissionFlagsBits, REST, Routes, SlashCommandBuilder } from 'discord.js';
 import { archiveMessage, updateArchivedMessage, redactMessage, setChannelEnabled, syncChannel, syncGuild } from './db.js';
 
+const DISCORD_EPOCH = 1_420_070_400_000n;
+function accountCreatedAt(uid) {
+  if (!/^\d{16,22}$/.test(uid)) return null;
+  const timestamp = Number((BigInt(uid) >> 22n) + DISCORD_EPOCH);
+  return Number.isFinite(timestamp) && timestamp <= 8_640_000_000_000_000 ? new Date(timestamp).toISOString() : null;
+}
+
+// Search is Discord's *prefix* match for username/nickname, not an arbitrary substring match.
+// Neither path lists all guild members, requests the Members gateway intent, or persists a roster.
+export async function lookupGuildMembers(guild, query, limit) {
+  let members;
+  if (/^\d{16,22}$/.test(query)) {
+    try {
+      const member = await guild.members.fetch({ user: query, force: true, cache: false });
+      members = member ? [member] : [];
+    } catch (error) {
+      if (error.code === 10007) members = []; // Discord Unknown Member: UID not in this guild.
+      else throw error;
+    }
+  } else {
+    members = [...(await guild.members.search({ query, limit, cache: false })).values()];
+  }
+  return members.slice(0, limit).map(member => ({
+    uid: member.id,
+    displayName: member.displayName,
+    username: member.user.username,
+    roles: [...member.roles.cache.values()].filter(role => role.id !== guild.id).map(role => ({ id: role.id, name: role.name })),
+    joinedAt: member.joinedAt?.toISOString() ?? null,
+    accountCreatedAt: accountCreatedAt(member.id)
+  }));
+}
+
 export function createDiscordService({ db, token, clientId }) {
   const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent], partials: [Partials.Message, Partials.Channel] });
   const allowedType = channel => channel?.type === ChannelType.GuildText;

@@ -102,7 +102,7 @@ function replaceEmojis(db, id, content) {
   for (const emoji of parseEmojis(content)) insert.run(id, emoji.id, emoji.name, emoji.contentType, emoji.count);
 }
 function publicMedia(item) {
-  if (item.kind !== 'sticker') return item;
+  if (item.kind !== 'sticker') return { ...item, url: safeMediaUrl(item.url) };
   const preview = stickerFromMime(item.id, item.contentType, item.url);
   return { ...item, ...preview };
 }
@@ -266,7 +266,20 @@ export function listMessages(db, channelId, before, limit = 50) {
     ORDER BY length(id) DESC, id DESC LIMIT ?`)
     .all(channelId, before, before, before, before, limit + 1);
   const hasMore = rows.length > limit;
-  return { messages: rows.slice(0, limit), nextBefore: hasMore ? rows[limit - 1].id : null };
+  const messages = rows.slice(0, limit).map(row => ({ ...row, media: [] }));
+  if (messages.length) {
+    // Only look up metadata for messages on this authorized, paginated channel page.
+    // Two batched queries avoid one query per message and keep the cursor unchanged.
+    const byId = new Map(messages.map(message => [message.id, message.media]));
+    const placeholders = messages.map(() => '?').join(',');
+    const media = db.prepare(`SELECT message_id AS messageId,kind,id,name,content_type AS contentType,size,url
+      FROM message_media WHERE message_id IN (${placeholders}) ORDER BY message_id,kind,id`).all(...byId.keys());
+    const emojis = db.prepare(`SELECT message_id AS messageId,id,name,content_type AS contentType,count
+      FROM message_emojis WHERE message_id IN (${placeholders}) ORDER BY message_id,id`).all(...byId.keys());
+    for (const { messageId, ...item } of media) byId.get(messageId).push(publicMedia(item));
+    for (const { messageId, ...item } of emojis) byId.get(messageId).push(publicEmoji(item));
+  }
+  return { messages, nextBefore: hasMore ? messages.at(-1).id : null };
 }
 export function dailyStats(db, channelId, days = 30) {
   const today = new Date().toISOString().slice(0, 10);

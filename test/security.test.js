@@ -15,7 +15,10 @@ function fixture() {
   archiveMessage(db, { id: '423456789012345678', guildId: GUILD, channelId: CHANNEL,
     authorId: '523456789012345678', authorName: 'Example', content: '<script>bad</script>', createdAt: new Date().toISOString() });
   archiveMessage(db, { id: '423456789012345679', guildId: GUILD, channelId: OTHER,
-    authorId: '523456789012345678', authorName: 'Mod', content: 'secret', createdAt: new Date().toISOString() });
+    authorId: '523456789012345678', authorName: 'Mod', content: 'secret 😀',
+    media: [{ kind: 'attachment', id: '723456789012345678', name: 'secret.png',
+      contentType: 'image/png', url: 'https://cdn.discordapp.com/attachments/1/2/secret.png' }],
+    createdAt: new Date().toISOString() });
   const token = 'a'.repeat(43), csrf = 'b'.repeat(43);
   db.prepare('INSERT INTO sessions(token_hash,user_id,username,csrf_hash,expires_at) VALUES(?,?,?,?,?)')
     .run(hash(token), '623456789012345678', 'Tester', hash(csrf), Date.now() + 100000);
@@ -47,7 +50,8 @@ test('admin-only endpoints deny unauthenticated and non-admin access including s
       assert.doesNotMatch(await response.text(), /secret/);
     }
     f.allow(true);
-    assert.equal((await request(`${path}/messages`)).status, 200);
+    const allowed = await (await request(`${path}/messages`)).json();
+    assert.deepEqual(allowed.messages[0].media.map(item => item.kind), ['attachment', 'emoji']);
     f.allow(false);
     assert.equal((await request(`${path}/messages`)).status, 403);
   });
@@ -62,7 +66,9 @@ test('Manage Server alone cannot expose a channel denied by channel permissions'
     for (const suffix of ['/messages', '/stats', '']) {
       const response = await request(`${path}${suffix}`, suffix ? {} : { method: 'PATCH', headers: { 'X-CSRF-Token': f.csrf, 'Content-Type': 'application/json' }, body: '{"enabled":false}' });
       assert.equal(response.status, 403);
-      assert.doesNotMatch(await response.text(), /secret/);
+      const body = await response.text();
+      assert.doesNotMatch(body, /secret/);
+      assert.doesNotMatch(body, /cdn\.discordapp\.com\/attachments/);
     }
   });
 });

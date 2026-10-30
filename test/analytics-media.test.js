@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { openDatabase, syncGuild, syncChannel, archiveMessage, updateArchivedMessage,
-  redactMessage, purgeChannel, pruneMessages, dailyStats, listMedia } from '../src/db.js';
+  redactMessage, purgeChannel, pruneMessages, dailyStats, listMedia, listMessages } from '../src/db.js';
 import { createApp } from '../src/app.js';
 import { createDiscordService } from '../src/discord.js';
 import { hash } from '../src/auth.js';
@@ -52,6 +52,8 @@ test('opt-in, UTC histogram, exclusive category precedence and legacy unknown mi
     updateArchivedMessage(db, { id: '423456789012345671', guildId: G, channelId: C,
       content: 'updated legacy content', editedAt: now() });
     assert.equal(db.prepare('SELECT category FROM messages WHERE id=?').get('423456789012345671').category, null);
+    // Historical content is not retroactively inferred as metadata by migration.
+    assert.deepEqual(listMessages(db, C, null).messages[0].media, []);
     add(db, '423456789012345672', 'hello');
     add(db, '423456789012345673', 'https://example.com');
     add(db, '423456789012345674', 'hello https://example.com', [attachment('523456789012345674')]);
@@ -125,6 +127,42 @@ test('media pagination includes every item on the boundary message', () => {
     assert.equal(second.media.length, 2);
     assert.equal(second.nextBefore, null);
     assert.equal(second.media[0].messageId, '423456789012345681');
+  } finally { db.close(); }
+});
+
+test('message pages associate only their own media and retain the message cursor', () => {
+  const db = setup();
+  try {
+    db.prepare('UPDATE channels SET enabled=1').run();
+    const older = '423456789012345681', newer = '423456789012345682';
+    const otherChannel = '423456789012345683';
+    const file = '523456789012345681', stickerId = '623456789012345681';
+    add(db, older, 'legacy style plain message');
+    add(db, newer, `😀 <:wave:${file}>`, [
+      attachment(file, 'image/png', 'https://media.discordapp.net/attachments/12/34/x.png'),
+      { kind: 'sticker', id: stickerId, name: 'wave', format: 4 }
+    ]);
+    add(db, otherChannel, 'private 😀', [attachment('523456789012345683')], H);
+    const first = listMessages(db, C, null, 1);
+    assert.equal(first.nextBefore, newer);
+    assert.equal(first.messages.length, 1);
+    assert.equal(first.messages[0].id, newer);
+    assert.deepEqual(first.messages[0].media.map(item => item.kind), ['attachment', 'sticker', 'emoji', 'emoji']);
+    assert.deepEqual(first.messages[0].media[0], { kind: 'attachment', id: file, name: 'x.png',
+      contentType: 'image/png', size: 12, url: 'https://media.discordapp.net/attachments/12/34/x.png' });
+    assert.equal(first.messages[0].media[1].url, `https://cdn.discordapp.com/stickers/${stickerId}.gif`);
+    assert.equal(first.messages[0].media.find(item => item.kind === 'emoji' && item.id === file).url,
+      `https://cdn.discordapp.com/emojis/${file}.png`);
+    assert.equal(first.messages[0].media.find(item => item.id === '😀').url, null);
+    assert.equal(first.messages[0].media.some(item => 'messageId' in item || 'authorName' in item), false);
+    const second = listMessages(db, C, first.nextBefore, 1);
+    assert.equal(second.nextBefore, null);
+    assert.deepEqual(second.messages.map(message => [message.id, message.media]), [[older, []]]);
+    db.prepare('UPDATE message_media SET url=? WHERE message_id=? AND kind=?')
+      .run('https://cdn.discordapp.com.evil.example/steal.png', newer, 'attachment');
+    assert.equal(listMessages(db, C, null, 1).messages[0].media[0].url, null);
+    assert.equal(listMedia(db, C, null, 1).media[0].url, null);
+    assert.equal(listMessages(db, H, null).messages[0].media.length, 2);
   } finally { db.close(); }
 });
 
