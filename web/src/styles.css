@@ -1,10 +1,24 @@
-/* ArchiveMe layout only. This file has no theme: browser defaults own colors,
-   fonts, controls and focus indicators. Design the site in this file yourself.
-   Keep layout, overflow and mobile navigation rules so features remain usable. */
+/* ArchiveMe: simple interface. Change these colors to make it yours. */
+:root {
+  color-scheme: light;
+  --page: #ffffff;
+  --panel: #ffffff;
+  --text: #202020;
+  --muted: #555555;
+  --line: #dddddd;
+  --action: #174b77;
+  --action-text: #ffffff;
+  --focus: #174b77;
+  --chart: #174b77;
+}
 
 /* Base */
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; }
+body { margin: 0; font: 1rem/1.5 system-ui, sans-serif; background: var(--page); color: var(--text); }
+h1 { font-size: clamp(1.6rem, 3vw, 2rem); }
+h2 { font-size: 1.25rem; }
+a { color: var(--action); }
+:where(button, input, select, a):focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 img, svg, video { max-width: 100%; }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
@@ -15,11 +29,16 @@ button { cursor: pointer; }
 .primary-button, .secondary-button, .danger-button, .icon-button, .text-button,
 .nav-item, .quick-item, .purge-button, .clear-search, .mobile-menu, .sidebar-close {
   display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-  min-height: 2.5rem; padding: .35rem .6rem;
+  min-height: 2.5rem; padding: .4rem .7rem;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text);
 }
+.primary-button { background: var(--action); color: var(--action-text); border-color: var(--action); }
+.danger-button { border-color: #a33; }
 .nav-item, .quick-item { justify-content: flex-start; text-align: left; }
-input, select { min-height: 2.5rem; max-width: 100%; }
-.card, .stat-card, .settings-intro, .access-card, .confirm-modal { min-width: 0; padding: 1rem; }
+input, select { min-height: 2.5rem; max-width: 100%; padding: .35rem; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+.card, .stat-card, .settings-intro, .access-card, .confirm-modal { min-width: 0; padding: 1rem; background: var(--panel); }
+.message, .member-entry, .media-item, .settings-row { border-bottom: 1px solid var(--line); }
+.page-subtitle, .search-hint, .message-meta time, .media-meta, .stat-note { color: var(--muted); }
 
 /* Login */
 .login-layout, .boot-loading { min-height: 100vh; display: grid; place-items: center; padding: 1rem; }
@@ -30,7 +49,7 @@ input, select { min-height: 2.5rem; max-width: 100%; }
 
 /* Dashboard: sidebar is a layout rail, not a styled theme. */
 .app-shell { min-height: 100vh; display: flex; }
-.sidebar { flex: 0 0 15rem; width: 15rem; display: flex; flex-direction: column; padding: 1rem; }
+.sidebar { flex: 0 0 15rem; width: 15rem; display: flex; flex-direction: column; padding: 1rem; border-right: 1px solid var(--line); background: var(--panel); }
 .sidebar-scroll { flex: 1; overflow-y: auto; }
 .sidebar-scrim, .sidebar-close, .mobile-menu { display: none; }
 .guild-picker { position: relative; display: flex; align-items: center; gap: .5rem; min-height: 3rem; }
@@ -40,14 +59,19 @@ input, select { min-height: 2.5rem; max-width: 100%; }
 .guild-badge, .avatar { display: inline-grid; place-items: center; flex: none; width: 2.5rem; height: 2.5rem; overflow: hidden; }
 .guild-badge img, .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .nav-item { display: flex; width: 100%; margin: .25rem 0; }
-.nav-item.active { font-weight: bold; }
+.nav-item.active { font-weight: bold; border-color: var(--action); }
+.activity-card svg polyline { stroke: var(--chart); }
+.nav-section + .nav-section { margin-top: 1rem; }
+.sidebar-profile { display: flex; align-items: center; gap: .5rem; }
+.sidebar-bottom { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.logout-button { margin-left: auto; }
 .main-area { flex: 1; min-width: 0; }
 .topbar, .heading-row, .card-heading, .settings-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.topbar { padding: 1rem; }
+.topbar { padding: 1rem; border-bottom: 1px solid var(--line); }
 .topbar-left, .topbar-right, .breadcrumb { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .page-content { width: min(100%, 90rem); margin-inline: auto; padding: 1rem; }
 
-/* Overview and charts: lengths and axes are essential, colors are not. */
+/* Statistics and charts */
 .stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 .overview-grid, .media-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .quick-list { display: grid; gap: .5rem; }
@@ -55,8 +79,8 @@ input, select { min-height: 2.5rem; max-width: 100%; }
 .statistics-page > section { margin-block: 1rem; }
 .column-chart { display: flex; gap: .5rem; width: 100%; min-width: 0; overflow-x: auto; padding-block: .5rem; }
 .column-item { flex: 1 0 max(2.75rem, 3.5%); min-width: 0; max-width: 9rem; display: flex; flex-direction: column; align-items: center; gap: .25rem; font-variant-numeric: tabular-nums; }
-.column-track { display: flex; align-items: flex-end; width: min(100%, 3.25rem); height: 11rem; border: 1px solid currentColor; }
-.column-fill { width: 100%; background: currentColor; }
+.column-track { display: flex; align-items: flex-end; width: min(100%, 3.25rem); height: 11rem; border: 1px solid var(--line); }
+.column-fill { width: 100%; background: var(--chart); }
 .column-label { width: 100%; text-align: center; overflow-wrap: anywhere; }
 .column-preview-slot { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; }
 .column-item .media-preview { width: 2.5rem; height: 2.5rem; }
@@ -70,9 +94,11 @@ input, select { min-height: 2.5rem; max-width: 100%; }
 /* Media and message archive. Sticker previews have no surrounding border. */
 .media-item, .member-entry { min-width: 0; overflow-wrap: anywhere; }
 .media-meta { display: flex; flex-direction: column; }
-.media-preview { display: grid; place-items: center; width: 5.5rem; height: 5.5rem; max-width: 100%; object-fit: contain; overflow: hidden; text-align: center; }
+.media-preview { display: grid; place-items: center; width: 5.5rem; height: 5.5rem; max-width: 100%; object-fit: contain; overflow: hidden; text-align: center; border: 0; }
 .media-preview img { width: 100%; height: 100%; object-fit: contain; }
 .archive-toolbar, .archive-tools, .message-list { padding: 1rem; }
+.archive-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; border-bottom: 1px solid var(--line); }
+.archive-tools input { flex: 1 1 12rem; }
 .search-field { width: min(100%, 24rem); }
 .search-field input { flex: 1; min-width: 0; }
 .message { display: flex; align-items: flex-start; gap: .75rem; padding-block: .5rem; }
@@ -99,13 +125,13 @@ input, select { min-height: 2.5rem; max-width: 100%; }
 .toggle span { display: block; width: 1rem; height: 1rem; border: 1px solid currentColor; }
 .toggle-on span { margin-left: auto; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; overflow: auto; padding: 1rem; background: #0009; }
-.confirm-modal { width: min(100%, 30rem); max-height: 100%; overflow-y: auto; background: Canvas; color: CanvasText; }
+.confirm-modal { width: min(100%, 30rem); max-height: 100%; overflow-y: auto; background: var(--panel); color: var(--text); }
 .modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; }
 
 /* Mobile navigation (necessary even without any visual theme). */
 @media (max-width: 760px) {
   .app-shell { display: block; }
-  .sidebar { position: fixed; z-index: 30; inset: 0 auto 0 0; width: min(18rem, 85vw); height: 100vh; overflow-y: auto; background: Canvas; color: CanvasText; transform: translateX(-110%); }
+  .sidebar { position: fixed; z-index: 30; inset: 0 auto 0 0; width: min(18rem, 85vw); height: 100vh; overflow-y: auto; background: var(--panel); color: var(--text); transform: translateX(-110%); }
   .sidebar.sidebar-open { transform: translateX(0); }
   .sidebar-scrim.visible { display: block; position: fixed; z-index: 20; inset: 0; background: #0009; }
   .sidebar-close, .mobile-menu { display: inline-flex; }

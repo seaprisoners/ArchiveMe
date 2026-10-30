@@ -138,6 +138,7 @@ export function openDatabase(filename = ':memory:') {
     );
     CREATE INDEX IF NOT EXISTS messages_channel_id ON messages(channel_id,id DESC);
     CREATE INDEX IF NOT EXISTS messages_numeric_order ON messages(channel_id,length(id) DESC,id DESC);
+    CREATE INDEX IF NOT EXISTS messages_guild_numeric_order ON messages(guild_id,length(id) DESC,id DESC);
     CREATE INDEX IF NOT EXISTS messages_channel_time ON messages(channel_id,created_at);
     CREATE TABLE IF NOT EXISTS message_media (
       message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
@@ -259,16 +260,11 @@ export function purgeChannel(db, guildId, channelId, actorId) {
     return result.changes;
   });
 }
-export function listMessages(db, channelId, before, limit = 50) {
-  const rows = db.prepare(`SELECT id,author_id AS authorId,author_name AS authorName,avatar_url AS avatarUrl,
-    content,created_at AS createdAt,edited_at AS editedAt,deleted_at AS deletedAt FROM messages
-    WHERE channel_id=? AND (? IS NULL OR length(id) < length(?) OR (length(id)=length(?) AND id < ?))
-    ORDER BY length(id) DESC, id DESC LIMIT ?`)
-    .all(channelId, before, before, before, before, limit + 1);
+function messagePage(db, rows, limit) {
   const hasMore = rows.length > limit;
   const messages = rows.slice(0, limit).map(row => ({ ...row, media: [] }));
   if (messages.length) {
-    // Only look up metadata for messages on this authorized, paginated channel page.
+    // Look up metadata only for this authorized page, never for skipped channels.
     // Two batched queries avoid one query per message and keep the cursor unchanged.
     const byId = new Map(messages.map(message => [message.id, message.media]));
     const placeholders = messages.map(() => '?').join(',');
@@ -280,6 +276,28 @@ export function listMessages(db, channelId, before, limit = 50) {
     for (const { messageId, ...item } of emojis) byId.get(messageId).push(publicEmoji(item));
   }
   return { messages, nextBefore: hasMore ? messages.at(-1).id : null };
+}
+export function listMessages(db, channelId, before, limit = 50) {
+  const rows = db.prepare(`SELECT id,author_id AS authorId,author_name AS authorName,avatar_url AS avatarUrl,
+    content,created_at AS createdAt,edited_at AS editedAt,deleted_at AS deletedAt FROM messages
+    WHERE channel_id=? AND (? IS NULL OR length(id) < length(?) OR (length(id)=length(?) AND id < ?))
+    ORDER BY length(id) DESC, id DESC LIMIT ?`)
+    .all(channelId, before, before, before, before, limit + 1);
+  return messagePage(db, rows, limit);
+}
+// The caller supplies only channel IDs checked against current Discord permissions.
+// Recheck guild and enabled status in SQL so guessed IDs cannot broaden the page.
+export function listGuildMessages(db, guildId, channelIds, before, limit = 50) {
+  if (!channelIds.length) return { messages: [], nextBefore: null };
+  const rows = db.prepare(`SELECT m.id,m.channel_id AS channelId,c.name AS channelName,
+    m.author_id AS authorId,m.author_name AS authorName,m.avatar_url AS avatarUrl,
+    m.content,m.created_at AS createdAt,m.edited_at AS editedAt,m.deleted_at AS deletedAt
+    FROM messages m JOIN channels c ON c.id=m.channel_id AND c.guild_id=m.guild_id
+    WHERE m.guild_id=? AND c.enabled=1 AND c.id IN (SELECT value FROM json_each(?))
+    AND (? IS NULL OR length(m.id) < length(?) OR (length(m.id)=length(?) AND m.id < ?))
+    ORDER BY length(m.id) DESC,m.id DESC LIMIT ?`)
+    .all(guildId, JSON.stringify(channelIds), before, before, before, before, limit + 1);
+  return messagePage(db, rows, limit);
 }
 export function dailyStats(db, channelId, days = 30) {
   const today = new Date().toISOString().slice(0, 10);

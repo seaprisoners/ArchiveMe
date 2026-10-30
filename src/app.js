@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { authRoutes } from './auth.js';
-import { dailyStats, listMedia, listMessages, purgeChannel, setChannelEnabled } from './db.js';
+import { dailyStats, listGuildMessages, listMedia, listMessages, purgeChannel, setChannelEnabled } from './db.js';
 import { lookupGuildMembers } from './discord.js';
 
 const snowflake = value => typeof value === 'string' && /^\d{16,22}$/.test(value);
@@ -114,6 +114,21 @@ export function createApp({ db, discord, clientId = '', clientSecret = '', baseU
         channels.push({ ...channel, enabled: !!channel.enabled, messageCount: channel.enabled ? channel.messageCount : 0 });
     }
     res.json({ guild, channels });
+  });
+  app.get('/api/guilds/:guildId/messages', requireAdmin, async (req, res) => {
+    const limit = Number(req.query.limit ?? 50);
+    const before = req.query.before;
+    if (Object.keys(req.query).some(key => key !== 'limit' && key !== 'before') ||
+      !Number.isInteger(limit) || limit < 1 || limit > 100 ||
+      (before !== undefined && !snowflake(before)))
+      return res.status(400).json({ error: 'Invalid pagination' });
+    const candidates = db.prepare('SELECT id FROM channels WHERE guild_id=? AND enabled=1').all(req.params.guildId);
+    const authorized = [];
+    for (const channel of candidates) {
+      if (await discord.canReadChannel(req.params.guildId, channel.id, req.session.user_id))
+        authorized.push(channel.id);
+    }
+    res.json(listGuildMessages(db, req.params.guildId, authorized, before ?? null, limit));
   });
   app.get('/api/guilds/:guildId/channels/:channelId/messages', requireAdmin, requireChannel, (req, res) => {
     if (!req.archiveChannel.enabled) return res.status(403).json({ error: 'Archiving is disabled' });
